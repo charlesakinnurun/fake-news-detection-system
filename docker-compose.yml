@@ -1,0 +1,50 @@
+services:
+  api:
+    build:
+      context: .
+      target: api
+    image: fake-news-detection-api:local
+    command:
+      - uvicorn
+      - fake_news_detection.api.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+    environment:
+      FND_API_HOST: 0.0.0.0
+      FND_API_PORT: "8000"
+      FND_LOG_LEVEL: INFO
+      FND_RATE_LIMIT_ENABLED: "true"
+      FND_LOG_REQUEST_BODIES: "false"
+    ports:
+      - "8000:8000"
+    volumes:
+      # Train first (`make train`); the artifact is mounted read-only so the
+      # container cannot modify or replace the served model.
+      - ./artifacts:/app/artifacts:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      target: app
+    image: fake-news-detection-app:local
+    environment:
+      FND_API_BASE_URL: http://api:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
