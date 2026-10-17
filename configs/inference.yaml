@@ -1,0 +1,27 @@
+# ---------------------------------------------------------------------------
+# Inference defaults
+# ---------------------------------------------------------------------------
+# The service reads its runtime configuration from environment variables with
+# the FND_ prefix (see .env.example and fake_news_detection.config.ServiceSettings).
+# This file documents the defaults and is consumed by the scripts below.
+# ---------------------------------------------------------------------------
+
+artifact_dir: artifacts
+model_artifact: model.joblib
+model_metadata: model_metadata.json
+
+decision_threshold: null      # null => use the threshold stored in model_metadata.json
+max_title_chars: 512
+max_text_chars: 20000
+max_request_bytes: 262144
+max_batch_size: 64
+min_total_chars: 4
+
+rate_limit:
+  enabled: true
+  requests: 60
+  window_seconds: 60
+
+logging:
+  level: INFO
+  log_request_bodies: false
