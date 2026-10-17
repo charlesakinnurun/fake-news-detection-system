@@ -1,0 +1,88 @@
+# ---------------------------------------------------------------------------
+# Data acquisition, validation and leakage-safe splitting
+# ---------------------------------------------------------------------------
+# The dataset is NOT redistributed with this repository. Run
+#     python scripts/download_data.py
+# to fetch the canonical archive from the University of Victoria ISOT lab and
+# place True.csv / Fake.csv under data/raw/.
+# ---------------------------------------------------------------------------
+
+seed: 42
+
+dataset:
+  name: isot-fake-and-real-news
+  version: "1.0.0"
+  homepage: https://onlineacademiccommunity.uvic.ca/isot/2022/11/27/fake-news-detection-datasets/
+  citation: >-
+    Ahmed, H., Traore, I., & Saad, S. (2017). Detection of Online Fake News Using
+    N-Gram Analysis and Machine Learning Techniques. / ISOT Fake News Dataset,
+    University of Victoria (Information Security and Object Technology lab).
+  license_note: >-
+    Downloaded from the ISOT research lab at the University of Victoria. The lab
+    does not attach an explicit open-source licence to the archive; it is
+    published for research use. This repository therefore does not redistribute
+    the data and downloads it only on explicit request. Verify the current terms
+    with the dataset owner before any commercial or redistribution use.
+  sources:
+    - path: data/raw/True.csv
+      label: REAL
+      description: "ISOT true/factual articles (Reuters newswire)."
+    - path: data/raw/Fake.csv
+      label: FAKE
+      description: "ISOT fake-news articles harvested from unreliable outlets."
+  columns:
+    title: title
+    text: text
+    subject: subject
+    date: date
+    label: null            # label is supplied per source file, not per row
+  encoding: utf-8
+  labels: [FAKE, REAL]
+  positive_label: FAKE
+  date_formats:
+    - "%B %d, %Y"          # "December 31, 2017"
+    - "%Y-%m-%d"
+    - "%Y-%m-%d %H:%M:%S"
+    - "%d-%B-%y"
+
+validation:
+  min_title_chars: 3
+  min_text_chars: 40       # excludes the 630 body-less rows in Fake.csv (see report)
+  min_total_chars: 60
+  max_title_chars: 1000
+  max_text_chars: 60000
+  drop_empty_bodies: true
+  drop_exact_duplicates: true
+  conflicting_label_policy: drop     # drop | majority
+  majority_min_agreement: 0.75
+  max_reported_examples: 20
+
+preprocessing:
+  text_field: title_body
+  separator: " \n "
+  lowercase: false         # case is preserved; TF-IDF lowercases inside the pipeline
+  normalize_unicode: true
+  collapse_whitespace: true
+  remove_control_chars: true
+  strip_urls: false
+  strip_html: false
+  replace_numbers: false
+  min_token_length: 0
+
+splitting:
+  strategy: grouped_stratified
+  train_size: 0.70
+  val_size: 0.15
+  test_size: 0.15
+  near_duplicate:
+    enabled: true
+    shingle_size: 4
+    num_hashes: 64
+    num_bands: 16
+    jaccard_threshold: 0.80
+    max_shingles_per_doc: 300
+  temporal:
+    enabled: false
+    date_column: date
+    val_size: 0.15
+    test_size: 0.15
