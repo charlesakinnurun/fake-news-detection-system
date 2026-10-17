@@ -1,0 +1,104 @@
+# ---------------------------------------------------------------------------
+# Feature extraction, candidate models, model selection and calibration
+# ---------------------------------------------------------------------------
+
+seed: 42
+model_version: "1.0.0"
+
+features:
+  word:
+    enabled: true
+    ngram_range: [1, 2]
+    min_df: 2
+    max_df: 0.9
+    max_features: 300000
+    sublinear_tf: true
+    lowercase: true
+    strip_accents: unicode
+    token_pattern: "(?u)\\b\\w[\\w'’\\-]+\\b"
+    use_idf: true
+    binary: false
+    norm: l2
+  char:
+    # Character n-grams are supported but disabled by default: the ablation in
+    # the README shows the added cost is not repaid by the validation gain on
+    # this corpus. Enable for cross-domain robustness experiments.
+    enabled: false
+    analyzer: char_wb
+    ngram_range: [3, 5]
+    min_df: 3
+    max_df: 1.0
+    max_features: 100000
+    sublinear_tf: true
+    lowercase: true
+    strip_accents: unicode
+    norm: l2
+
+selector:
+  enabled: false
+  method: chi2
+  k: 200000
+
+models:
+  dummy:
+    enabled: true
+    strategy: prior
+  logistic_regression:
+    enabled: true
+    C: 1.0
+    # sklearn >= 1.8 regularisation API: 0.0 = L2, 1.0 = L1 (saga for mixtures).
+    l1_ratio: 0.0
+    solver: liblinear
+    max_iter: 1000
+    class_weight: null
+    tol: 0.0001
+  complement_nb:
+    enabled: true
+    alpha: 1.0
+    fit_prior: true
+    norm: false
+  random_forest:
+    # Tree ensembles rarely beat linear models on sparse TF-IDF vectors; this
+    # candidate exists to *demonstrate* that on evidence rather than assume it.
+    enabled: true
+    n_estimators: 150
+    max_depth: null
+    min_samples_leaf: 1
+    max_features: sqrt
+    class_weight: balanced_subsample
+    n_jobs: -1
+    random_state: null
+  linear_svc_calibrated:
+    enabled: true
+    C: 1.0
+    loss: squared_hinge
+    calibration_cv: 3
+    calibration_method: sigmoid
+
+cv:
+  enabled: true
+  folds: 3
+  # Cross-validation runs on a stratified subsample to bound compute on
+  # CPU-only machines. Reported metrics use the full validation split.
+  max_samples: 12000
+  n_jobs: 1
+
+selection:
+  # Selection happens on the validation split only. The test split is touched
+  # exactly once, after the winner has been frozen.
+  primary_metric: macro_f1
+  tie_breakers: [f1_positive, latency_ms_p95, artifact_size_mb]
+  latency_sample_size: 200
+
+calibration:
+  enabled: true
+  method: isotonic
+  cv: 3
+
+threshold:
+  tune: true
+  metric: f1_positive
+  grid_start: 0.05
+  grid_stop: 0.95
+  grid_step: 0.05
+  default: 0.5
